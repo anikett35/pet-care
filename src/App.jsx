@@ -26,6 +26,7 @@ import GroomingAppointment from "./components/GroomingAppointment.jsx";
 import AdoptionCenter from "./components/AdoptionCenter.jsx";
 import AdoptionApplication from "./components/AdoptionApplication.jsx";
 import AdoptionSuccess from "./components/AdoptionSuccess.jsx";
+import AdminAddPet from "./components/AdminAddPet.jsx";
 
 // Import Lucide React Icons
 import {
@@ -45,6 +46,7 @@ import {
   Scissors,
   Activity,
   Heart,
+  Plus,
 } from "lucide-react";
 
 // --- Auth Context ---
@@ -227,7 +229,7 @@ function Navigation() {
   const { user, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
 
-  const navigation = [
+  const baseNavigation = [
     { path: "/", name: "Dashboard", icon: Home },
     { path: "/pets", name: "Pets", icon: PawPrint },
     { path: "/appointments", name: "Appointments", icon: CalendarDays },
@@ -236,14 +238,15 @@ function Navigation() {
     { path: "/adoption", name: "Adoption", icon: Heart },
   ];
 
-  // Add admin link if user is admin
-  if (user?.role === "admin") {
-    navigation.push({
-      path: "/admin/appointments",
-      name: "Admin Panel",
-      icon: Shield,
-    });
-  }
+  const adminNavigation = [
+    { path: "/admin/appointments", name: "Admin Appointments", icon: Shield },
+    { path: "/admin/add-pet", name: "Add Pet", icon: Plus },
+  ];
+
+  // Combine base navigation with admin navigation if user is admin
+  const navigation = user?.role === "admin" 
+    ? [...baseNavigation, ...adminNavigation]
+    : baseNavigation;
 
   const isActive = (path) => location.pathname === path;
 
@@ -610,6 +613,15 @@ function AppContent() {
             <AdminRoute>
               <Navigation />
               <AdminAppointments />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/add-pet"
+          element={
+            <AdminRoute>
+              <Navigation />
+              <AdminAddPet />
             </AdminRoute>
           }
         />

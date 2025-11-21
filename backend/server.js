@@ -10,10 +10,10 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
+// Middleware - INCREASED PAYLOAD LIMIT FOR IMAGES
 app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '50mb' })); // Increased from default
+app.use(express.urlencoded({ limit: '50mb', extended: true })); // Increased from default
 
 // MongoDB Connection
 const connectDB = async () => {
@@ -65,7 +65,6 @@ app.get('/', (req, res) => {
     mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
   });
 });
-// Add this to your backend/server.js after your other routes
 
 // Enable adoption for all pets (one-time fix)
 app.put('/api/pets/enable-adoption', async (req, res) => {
@@ -224,5 +223,6 @@ mongoose.connection.once('open', () => {
     console.log(`📊 MongoDB: Connected to database`);
     console.log(`🔐 Auth routes: /api/auth/login, /api/auth/register`);
     console.log(`🐾 Adoption routes: /api/adoption/applications, /api/adoption/available-pets`);
+    console.log(`📸 Image upload limit: 50MB`);
   });
 });

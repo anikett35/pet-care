@@ -1,3 +1,11 @@
+
+
+
+
+
+
+
+
 // backend/routes/adoptionRoutes.js
 import express from 'express';
 import Adoption from '../models/Adoption.js';
