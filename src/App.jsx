@@ -1,4 +1,4 @@
-// src/App.jsx - Complete Fixed Version
+// src/App.jsx - Complete Fixed Version with Admin Manage Pets
 import { useState, useEffect, createContext, useContext } from "react";
 import {
   BrowserRouter as Router,
@@ -27,6 +27,7 @@ import AdoptionCenter from "./components/AdoptionCenter.jsx";
 import AdoptionApplication from "./components/AdoptionApplication.jsx";
 import AdoptionSuccess from "./components/AdoptionSuccess.jsx";
 import AdminAddPet from "./components/AdminAddPet.jsx";
+import AdminManagePets from "./components/AdminManagePets.jsx";
 
 // Import Lucide React Icons
 import {
@@ -47,6 +48,7 @@ import {
   Activity,
   Heart,
   Plus,
+  List,
 } from "lucide-react";
 
 // --- Auth Context ---
@@ -141,13 +143,9 @@ function ThemeProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    if (theme === "dark") {
-      document.documentElement.classList.add("dark");
-      document.body.className = "bg-gray-900 text-white transition-colors duration-300";
-    } else {
-      document.documentElement.classList.remove("dark");
-      document.body.className = "bg-gray-100 text-gray-900 transition-colors duration-300";
-    }
+    // Always use dark theme - remove light theme completely
+    document.documentElement.classList.add("dark");
+    document.body.className = "bg-gray-900 text-white transition-colors duration-300";
   }, [theme]);
 
   return (
@@ -239,8 +237,9 @@ function Navigation() {
   ];
 
   const adminNavigation = [
-    { path: "/admin/appointments", name: "Admin Appointments", icon: Shield },
+    { path: "/admin/manage-pets", name: "Manage Pets", icon: List },
     { path: "/admin/add-pet", name: "Add Pet", icon: Plus },
+    { path: "/admin/appointments", name: "Admin Appointments", icon: Shield },
   ];
 
   // Combine base navigation with admin navigation if user is admin
@@ -303,7 +302,7 @@ function Navigation() {
             </button>
           </div>
 
-          {/* Desktop Navigation */}
+          {/* Desktop Navigation - Fixed: removed overflow-x-auto */}
           <div className="hidden sm:flex sm:space-x-1 lg:space-x-2 items-center">
             {navigation.map((item) => (
               <NavButton key={item.path} item={item} />
@@ -361,7 +360,7 @@ function Navigation() {
 
       {/* Mobile Navigation */}
       {isOpen && (
-        <div className="sm:hidden bg-gray-800/95 backdrop-blur-sm border-t border-gray-700 py-2 px-4">
+        <div className="sm:hidden bg-gray-800/95 backdrop-blur-sm border-t border-gray-700 py-2 px-4 max-h-[80vh] overflow-y-auto">
           <div className="space-y-1">
             {navigation.map((item) => (
               <NavButton key={item.path} item={item} isMobile={true} />
@@ -369,6 +368,13 @@ function Navigation() {
           </div>
           
           <div className="border-t border-gray-700 mt-2 pt-2 space-y-1">
+            <div className="px-3 py-2 text-sm font-semibold text-purple-400 flex items-center">
+              <UserCircle className="h-4 w-4 mr-2" />
+              {user?.username || "User"}
+              {user?.role === "admin" && (
+                <Shield className="h-4 w-4 ml-2 text-yellow-300" />
+              )}
+            </div>
             <button
               onClick={toggleTheme}
               className="w-full text-left px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white rounded-lg flex items-center transition-all duration-200"
@@ -487,10 +493,7 @@ function AppContent() {
   }
 
   return (
-    <div className={theme === "dark" 
-      ? "min-h-screen bg-gradient-to-br from-purple-900 via-gray-900 to-pink-900 transition-all duration-300" 
-      : "min-h-screen bg-gradient-to-br from-blue-50 via-gray-100 to-pink-50 transition-all duration-300"
-    }>
+    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-gray-900 to-pink-900 transition-all duration-300">
       <Routes>
         {/* Public Routes */}
         <Route
@@ -622,6 +625,15 @@ function AppContent() {
             <AdminRoute>
               <Navigation />
               <AdminAddPet />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/manage-pets"
+          element={
+            <AdminRoute>
+              <Navigation />
+              <AdminManagePets />
             </AdminRoute>
           }
         />
