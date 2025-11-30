@@ -14,6 +14,34 @@ const generateToken = (userId) => {
   return jwt.sign({ id: userId }, JWT_SECRET, { expiresIn: JWT_EXPIRE });
 };
 
+// Middleware to verify token
+const verifyToken = (req, res, next) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'No token provided' });
+    }
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.userId = decoded.id;
+    next();
+  } catch (error) {
+    return res.status(401).json({ error: 'Invalid or expired token' });
+  }
+};
+
+// Middleware to verify admin
+const verifyAdmin = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.userId);
+    if (!user || user.role !== 'admin') {
+      return res.status(403).json({ error: 'Access denied. Admin only.' });
+    }
+    next();
+  } catch (error) {
+    return res.status(500).json({ error: 'Server error' });
+  }
+};
+
 // @route   POST /api/auth/register
 // @desc    Register new user
 // @access  Public
@@ -178,6 +206,200 @@ router.get('/me', async (req, res) => {
 // @access  Public
 router.post('/logout', (req, res) => {
   res.json({ message: 'Logout successful' });
+});
+
+// ==================== ADMIN USER MANAGEMENT ROUTES ====================
+
+// @route   GET /api/auth/users
+// @desc    Get all users (Admin only)
+// @access  Private/Admin
+router.get('/users', verifyToken, verifyAdmin, async (req, res) => {
+  try {
+    const users = await User.find().select('-password').sort({ createdAt: -1 });
+    res.json(users);
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch users',
+      details: error.message 
+    });
+  }
+});
+
+// @route   GET /api/auth/users/:id
+// @desc    Get single user by ID (Admin only)
+// @access  Private/Admin
+router.get('/users/:id', verifyToken, verifyAdmin, async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id).select('-password');
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    res.json(user);
+  } catch (error) {
+    console.error('Error fetching user:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch user',
+      details: error.message 
+    });
+  }
+});
+
+// @route   PUT /api/auth/users/:id/status
+// @desc    Toggle user active status (Admin only)
+// @access  Private/Admin
+router.put('/users/:id/status', verifyToken, verifyAdmin, async (req, res) => {
+  try {
+    const { isActive } = req.body;
+    
+    if (typeof isActive !== 'boolean') {
+      return res.status(400).json({ error: 'isActive must be a boolean' });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.params.id,
+      { isActive },
+      { new: true }
+    ).select('-password');
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({
+      message: `User ${isActive ? 'activated' : 'deactivated'} successfully`,
+      user
+    });
+  } catch (error) {
+    console.error('Error updating user status:', error);
+    res.status(500).json({ 
+      error: 'Failed to update user status',
+      details: error.message 
+    });
+  }
+});
+
+// @route   PUT /api/auth/users/:id/role
+// @desc    Update user role (Admin only)
+// @access  Private/Admin
+router.put('/users/:id/role', verifyToken, verifyAdmin, async (req, res) => {
+  try {
+    const { role } = req.body;
+    
+    if (!['user', 'admin'].includes(role)) {
+      return res.status(400).json({ error: 'Invalid role. Must be "user" or "admin"' });
+    }
+
+    // Prevent admin from changing their own role
+    if (req.params.id === req.userId) {
+      return res.status(403).json({ error: 'Cannot change your own role' });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.params.id,
+      { role },
+      { new: true }
+    ).select('-password');
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({
+      message: `User role updated to ${role} successfully`,
+      user
+    });
+  } catch (error) {
+    console.error('Error updating user role:', error);
+    res.status(500).json({ 
+      error: 'Failed to update user role',
+      details: error.message 
+    });
+  }
+});
+
+// @route   PUT /api/auth/users/:id
+// @desc    Update user details (Admin only)
+// @access  Private/Admin
+router.put('/users/:id', verifyToken, verifyAdmin, async (req, res) => {
+  try {
+    const { username, email, fullName } = req.body;
+    
+    const updateData = {};
+    if (username) updateData.username = username;
+    if (email) updateData.email = email;
+    if (fullName) updateData.fullName = fullName;
+
+    // Check if username or email already exists
+    if (username || email) {
+      const existingUser = await User.findOne({
+        _id: { $ne: req.params.id },
+        $or: [
+          username ? { username } : {},
+          email ? { email } : {}
+        ]
+      });
+
+      if (existingUser) {
+        return res.status(400).json({ 
+          error: existingUser.email === email 
+            ? 'Email already in use' 
+            : 'Username already taken' 
+        });
+      }
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true }
+    ).select('-password');
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({
+      message: 'User updated successfully',
+      user
+    });
+  } catch (error) {
+    console.error('Error updating user:', error);
+    res.status(500).json({ 
+      error: 'Failed to update user',
+      details: error.message 
+    });
+  }
+});
+
+// @route   DELETE /api/auth/users/:id
+// @desc    Delete user (Admin only)
+// @access  Private/Admin
+router.delete('/users/:id', verifyToken, verifyAdmin, async (req, res) => {
+  try {
+    // Prevent admin from deleting themselves
+    if (req.params.id === req.userId) {
+      return res.status(403).json({ error: 'Cannot delete your own account' });
+    }
+
+    const user = await User.findByIdAndDelete(req.params.id);
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({
+      message: 'User deleted successfully'
+    });
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    res.status(500).json({ 
+      error: 'Failed to delete user',
+      details: error.message 
+    });
+  }
 });
 
 export default router;

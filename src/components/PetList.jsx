@@ -1,47 +1,28 @@
-// src/components/PetList.jsx
+// src/components/PetList.jsx - FIXED to use MongoDB
 import React, { useState, useEffect } from 'react';
-import { Plus, Camera, Edit, Trash2, Upload } from 'lucide-react';
+import { Plus, Camera, Edit, Trash2, Upload, AlertCircle, CheckCircle } from 'lucide-react';
 
 const PetList = () => {
   const [pets, setPets] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState('');
   const [editingPet, setEditingPet] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
-    species: '',
+    species: 'Dog',
     breed: '',
     age: '',
-    gender: 'male',
+    gender: 'Male',
     weight: '',
-    image: null,
+    size: 'Medium',
+    color: '',
+    image: '',
     imagePreview: ''
   });
 
-  // Mock data
-  const mockPets = [
-    {
-      id: '1',
-      name: 'Buddy',
-      species: 'Dog',
-      breed: 'Golden Retriever',
-      age: 3,
-      gender: 'male',
-      weight: '65 lbs',
-      image: 'https://images.unsplash.com/photo-1552053831-71594a27632d?w=150&h=150&fit=crop&crop=center'
-    },
-    {
-      id: '2',
-      name: 'Whiskers',
-      species: 'Cat',
-      breed: 'Siamese',
-      age: 2,
-      gender: 'female',
-      weight: '8 lbs',
-      image: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=150&h=150&fit=crop&crop=center'
-    }
-  ];
+  const API_BASE_URL = 'http://localhost:5000/api';
 
   useEffect(() => {
     fetchPets();
@@ -52,13 +33,16 @@ const PetList = () => {
       setLoading(true);
       setError(null);
       
-      // Use mock data
-      await new Promise(resolve => setTimeout(resolve, 800));
-      setPets(mockPets);
+      const response = await fetch(`${API_BASE_URL}/pets`);
+      if (!response.ok) throw new Error('Failed to fetch pets');
+      
+      const data = await response.json();
+      console.log('✅ Pets loaded from database:', data);
+      setPets(data);
       
     } catch (err) {
-      console.error('Error fetching pets:', err);
-      setError('Failed to load pets');
+      console.error('❌ Error fetching pets:', err);
+      setError('Failed to load pets from database');
     } finally {
       setLoading(false);
     }
@@ -68,12 +52,14 @@ const PetList = () => {
     setEditingPet(null);
     setFormData({
       name: '',
-      species: '',
+      species: 'Dog',
       breed: '',
       age: '',
-      gender: 'male',
+      gender: 'Male',
       weight: '',
-      image: null,
+      size: 'Medium',
+      color: '',
+      image: '',
       imagePreview: ''
     });
     setShowForm(true);
@@ -87,17 +73,36 @@ const PetList = () => {
       breed: pet.breed,
       age: pet.age,
       gender: pet.gender,
-      weight: pet.weight,
-      image: null,
+      weight: pet.weight || '',
+      size: pet.size || 'Medium',
+      color: pet.color || '',
+      image: pet.image || '',
       imagePreview: pet.image || ''
     });
     setShowForm(true);
   };
 
-  const handleDeletePet = (petId) => {
-    if (window.confirm('Are you sure you want to delete this pet?')) {
-      const updatedPets = pets.filter(pet => pet.id !== petId);
-      setPets(updatedPets);
+  const handleDeletePet = async (petId) => {
+    if (!window.confirm('Are you sure you want to delete this pet?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/pets/${petId}`, {
+        method: 'DELETE'
+      });
+
+      if (!response.ok) throw new Error('Failed to delete pet');
+
+      setSuccessMessage('Pet deleted successfully!');
+      setTimeout(() => setSuccessMessage(''), 3000);
+      
+      // Refresh the pet list
+      fetchPets();
+    } catch (err) {
+      console.error('Error deleting pet:', err);
+      setError('Failed to delete pet');
+      setTimeout(() => setError(''), 3000);
     }
   };
 
@@ -108,7 +113,7 @@ const PetList = () => {
       reader.onloadend = () => {
         setFormData(prev => ({
           ...prev,
-          image: file,
+          image: reader.result, // Store base64 for database
           imagePreview: reader.result
         }));
       };
@@ -116,48 +121,64 @@ const PetList = () => {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
+    setSuccessMessage('');
     
-    if (editingPet) {
-      // Update existing pet
-      const updatedPets = pets.map(pet =>
-        pet.id === editingPet.id
-          ? {
-              ...pet,
-              ...formData,
-              image: formData.imagePreview || pet.image
-            }
-          : pet
-      );
-      setPets(updatedPets);
-    } else {
-      // Add new pet
-      const newPet = {
-        id: Date.now().toString(),
+    try {
+      // Prepare data for API
+      const petData = {
         name: formData.name,
         species: formData.species,
         breed: formData.breed,
         age: formData.age,
         gender: formData.gender,
         weight: formData.weight,
-        image: formData.imagePreview || 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=150&h=150&fit=crop&crop=center'
+        size: formData.size,
+        color: formData.color,
+        image: formData.image || formData.imagePreview
       };
-      setPets([...pets, newPet]);
+
+      let response;
+      
+      if (editingPet) {
+        // Update existing pet
+        response = await fetch(`${API_BASE_URL}/pets/${editingPet._id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(petData)
+        });
+      } else {
+        // Create new pet
+        response = await fetch(`${API_BASE_URL}/pets`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(petData)
+        });
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to save pet');
+      }
+
+      const result = await response.json();
+      console.log('✅ Pet saved:', result);
+
+      setSuccessMessage(editingPet ? 'Pet updated successfully!' : 'Pet added successfully!');
+      setTimeout(() => setSuccessMessage(''), 3000);
+      
+      setShowForm(false);
+      setEditingPet(null);
+      
+      // Refresh the pet list
+      fetchPets();
+      
+    } catch (err) {
+      console.error('❌ Error saving pet:', err);
+      setError(err.message);
     }
-    
-    setShowForm(false);
-    setFormData({
-      name: '',
-      species: '',
-      breed: '',
-      age: '',
-      gender: 'male',
-      weight: '',
-      image: null,
-      imagePreview: ''
-    });
-    setEditingPet(null);
   };
 
   const getSpeciesIcon = (species) => {
@@ -169,7 +190,7 @@ const PetList = () => {
       <div className="min-h-screen bg-gradient-to-br from-purple-900 via-gray-900 to-pink-900 p-6 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-400 mx-auto"></div>
-          <p className="mt-4 text-purple-300">Loading pets...</p>
+          <p className="mt-4 text-purple-300">Loading pets from database...</p>
         </div>
       </div>
     );
@@ -199,6 +220,25 @@ const PetList = () => {
         </div>
       </section>
 
+      {/* Messages */}
+      {successMessage && (
+        <div className="max-w-7xl mx-auto px-6 mb-6">
+          <div className="bg-green-500/20 border-2 border-green-500 rounded-xl p-4 flex items-center gap-3">
+            <CheckCircle className="h-6 w-6 text-green-400" />
+            <span className="text-green-300 font-semibold">{successMessage}</span>
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <div className="max-w-7xl mx-auto px-6 mb-6">
+          <div className="bg-red-500/20 border-2 border-red-500 rounded-xl p-4 flex items-center gap-3">
+            <AlertCircle className="h-6 w-6 text-red-400" />
+            <span className="text-red-300 font-semibold">{error}</span>
+          </div>
+        </div>
+      )}
+
       {/* Stats Section */}
       <section className="px-6 pb-8">
         <div className="max-w-7xl mx-auto">
@@ -223,7 +263,7 @@ const PetList = () => {
               </div>
               <div className="text-center">
                 <div className="text-3xl font-bold text-white">
-                  {pets.filter(pet => pet.gender === 'male').length}
+                  {pets.filter(pet => pet.gender === 'Male').length}
                 </div>
                 <div className="text-purple-300">Males</div>
               </div>
@@ -238,7 +278,7 @@ const PetList = () => {
           {pets.length === 0 ? (
             <div className="text-center py-20 bg-gray-800/50 backdrop-blur-sm rounded-3xl border border-purple-500/30">
               <div className="text-6xl mb-4">🐾</div>
-              <h3 className="text-2xl font-bold text-white mb-2">No pets found</h3>
+              <h3 className="text-2xl font-bold text-white mb-2">No pets in database</h3>
               <p className="text-purple-300 mb-6">Add your first pet to get started!</p>
               <button 
                 onClick={handleAddPet}
@@ -251,7 +291,7 @@ const PetList = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {pets.map((pet) => (
                 <div
-                  key={pet.id}
+                  key={pet._id}
                   className="group relative bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-purple-500/30 hover:border-purple-500 transition-all duration-300 hover:scale-105"
                 >
                   <div className="absolute inset-0 bg-gradient-to-br from-purple-600/10 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
@@ -259,11 +299,17 @@ const PetList = () => {
                   <div className="relative z-10">
                     {/* Pet Image */}
                     <div className="relative mb-4">
-                      <img
-                        src={pet.image}
-                        alt={pet.name}
-                        className="w-24 h-24 rounded-full mx-auto object-cover border-4 border-purple-500/30"
-                      />
+                      {pet.image ? (
+                        <img
+                          src={pet.image}
+                          alt={pet.name}
+                          className="w-24 h-24 rounded-full mx-auto object-cover border-4 border-purple-500/30"
+                        />
+                      ) : (
+                        <div className="w-24 h-24 rounded-full mx-auto bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center border-4 border-purple-500/30">
+                          <span className="text-3xl">{getSpeciesIcon(pet.species)}</span>
+                        </div>
+                      )}
                       <div className="absolute -bottom-2 -right-2 bg-purple-600 rounded-full p-2">
                         <span className="text-xl">{getSpeciesIcon(pet.species)}</span>
                       </div>
@@ -281,16 +327,18 @@ const PetList = () => {
                     <div className="space-y-2 text-sm text-gray-300">
                       <div className="flex justify-between">
                         <span>Age:</span>
-                        <span className="text-white">{pet.age} years</span>
+                        <span className="text-white">{pet.age}</span>
                       </div>
                       <div className="flex justify-between">
                         <span>Gender:</span>
-                        <span className="text-white capitalize">{pet.gender}</span>
+                        <span className="text-white">{pet.gender}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span>Weight:</span>
-                        <span className="text-white">{pet.weight}</span>
-                      </div>
+                      {pet.weight && (
+                        <div className="flex justify-between">
+                          <span>Weight:</span>
+                          <span className="text-white">{pet.weight}</span>
+                        </div>
+                      )}
                     </div>
 
                     {/* Action Buttons */}
@@ -303,7 +351,7 @@ const PetList = () => {
                         Edit
                       </button>
                       <button
-                        onClick={() => handleDeletePet(pet.id)}
+                        onClick={() => handleDeletePet(pet._id)}
                         className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg font-semibold transition duration-200 flex items-center justify-center gap-2"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -335,7 +383,7 @@ const PetList = () => {
                 </button>
               </div>
 
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-4">
                 {/* Image Upload */}
                 <div className="text-center">
                   <div className="relative inline-block">
@@ -362,18 +410,16 @@ const PetList = () => {
                       />
                     </label>
                   </div>
-                  <p className="text-sm text-gray-400 mt-2">Click camera to upload image</p>
+                  <p className="text-sm text-gray-400 mt-2">Click to upload image</p>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-purple-300 mb-2">
-                    Pet Name *
-                  </label>
+                  <label className="block text-sm font-medium text-purple-300 mb-2">Pet Name *</label>
                   <input
                     type="text"
                     value={formData.name}
                     onChange={(e) => setFormData({...formData, name: e.target.value})}
-                    className="w-full p-3 bg-gray-700 border border-purple-500/30 rounded-xl text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    className="w-full p-3 bg-gray-700 border border-purple-500/30 rounded-xl text-white"
                     placeholder="Enter pet name"
                     required
                   />
@@ -381,16 +427,13 @@ const PetList = () => {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-purple-300 mb-2">
-                      Species *
-                    </label>
+                    <label className="block text-sm font-medium text-purple-300 mb-2">Species *</label>
                     <select
                       value={formData.species}
                       onChange={(e) => setFormData({...formData, species: e.target.value})}
-                      className="w-full p-3 bg-gray-700 border border-purple-500/30 rounded-xl text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                      className="w-full p-3 bg-gray-700 border border-purple-500/30 rounded-xl text-white"
                       required
                     >
-                      <option value="">Select species</option>
                       <option value="Dog">Dog</option>
                       <option value="Cat">Cat</option>
                       <option value="Bird">Bird</option>
@@ -400,14 +443,12 @@ const PetList = () => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-purple-300 mb-2">
-                      Breed *
-                    </label>
+                    <label className="block text-sm font-medium text-purple-300 mb-2">Breed *</label>
                     <input
                       type="text"
                       value={formData.breed}
                       onChange={(e) => setFormData({...formData, breed: e.target.value})}
-                      className="w-full p-3 bg-gray-700 border border-purple-500/30 rounded-xl text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                      className="w-full p-3 bg-gray-700 border border-purple-500/30 rounded-xl text-white"
                       placeholder="Enter breed"
                       required
                     />
@@ -416,65 +457,71 @@ const PetList = () => {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-purple-300 mb-2">
-                      Age *
-                    </label>
+                    <label className="block text-sm font-medium text-purple-300 mb-2">Age *</label>
                     <input
-                      type="number"
+                      type="text"
                       value={formData.age}
                       onChange={(e) => setFormData({...formData, age: e.target.value})}
-                      className="w-full p-3 bg-gray-700 border border-purple-500/30 rounded-xl text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                      placeholder="Age in years"
-                      min="0"
-                      max="30"
+                      className="w-full p-3 bg-gray-700 border border-purple-500/30 rounded-xl text-white"
+                      placeholder="e.g., 2 years"
                       required
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-purple-300 mb-2">
-                      Gender *
-                    </label>
+                    <label className="block text-sm font-medium text-purple-300 mb-2">Gender *</label>
                     <select
                       value={formData.gender}
                       onChange={(e) => setFormData({...formData, gender: e.target.value})}
-                      className="w-full p-3 bg-gray-700 border border-purple-500/30 rounded-xl text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                      className="w-full p-3 bg-gray-700 border border-purple-500/30 rounded-xl text-white"
                     >
-                      <option value="male">Male</option>
-                      <option value="female">Female</option>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
                     </select>
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-purple-300 mb-2">
-                    Weight
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.weight}
-                    onChange={(e) => setFormData({...formData, weight: e.target.value})}
-                    className="w-full p-3 bg-gray-700 border border-purple-500/30 rounded-xl text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                    placeholder="e.g., 25 lbs or 12 kg"
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-purple-300 mb-2">Size *</label>
+                    <select
+                      value={formData.size}
+                      onChange={(e) => setFormData({...formData, size: e.target.value})}
+                      className="w-full p-3 bg-gray-700 border border-purple-500/30 rounded-xl text-white"
+                    >
+                      <option value="Small">Small</option>
+                      <option value="Medium">Medium</option>
+                      <option value="Large">Large</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-purple-300 mb-2">Weight</label>
+                    <input
+                      type="text"
+                      value={formData.weight}
+                      onChange={(e) => setFormData({...formData, weight: e.target.value})}
+                      className="w-full p-3 bg-gray-700 border border-purple-500/30 rounded-xl text-white"
+                      placeholder="e.g., 25 lbs"
+                    />
+                  </div>
                 </div>
 
                 <div className="flex gap-4 pt-4">
                   <button
-                    type="submit"
-                    className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white py-3 rounded-xl font-bold transition"
+                    onClick={handleSubmit}
+                    className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white py-3 rounded-xl font-bold"
                   >
                     {editingPet ? 'Update Pet' : 'Add Pet'}
                   </button>
                   <button
-                    type="button"
                     onClick={() => setShowForm(false)}
-                    className="flex-1 bg-gray-600 hover:bg-gray-700 text-white py-3 rounded-xl font-bold transition"
+                    className="flex-1 bg-gray-600 hover:bg-gray-700 text-white py-3 rounded-xl font-bold"
                   >
                     Cancel
                   </button>
                 </div>
-              </form>
+              </div>
             </div>
           </div>
         </div>

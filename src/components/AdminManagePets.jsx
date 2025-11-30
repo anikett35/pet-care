@@ -11,13 +11,15 @@ import {
   AlertCircle,
   CheckCircle,
   X,
-  Heart
+  Heart,
+  Users
 } from 'lucide-react';
 
 const AdminManagePets = () => {
   const navigate = useNavigate();
   const [pets, setPets] = useState([]);
   const [filteredPets, setFilteredPets] = useState([]);
+  const [petTypeStats, setPetTypeStats] = useState({});
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -29,6 +31,7 @@ const AdminManagePets = () => {
 
   useEffect(() => {
     fetchPets();
+    fetchPetTypeStats();
   }, []);
 
   useEffect(() => {
@@ -49,6 +52,20 @@ const AdminManagePets = () => {
       setError('Failed to load pets. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchPetTypeStats = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/adoption/stats`);
+      if (!response.ok) throw new Error('Failed to fetch stats');
+      
+      const data = await response.json();
+      setPetTypeStats(data);
+    } catch (err) {
+      console.error('Error fetching pet type stats:', err);
+      // Set empty stats if fails
+      setPetTypeStats({});
     }
   };
 
@@ -96,6 +113,9 @@ const AdminManagePets = () => {
       // Remove pet from local state
       setPets(prev => prev.filter(p => p._id !== deleteModal.pet._id));
       setDeleteModal({ show: false, pet: null });
+      
+      // Refresh stats
+      fetchPetTypeStats();
     } catch (err) {
       console.error('Error deleting pet:', err);
       setError('Failed to delete pet. Please try again.');
@@ -120,6 +140,10 @@ const AdminManagePets = () => {
         Adopted
       </span>
     );
+  };
+
+  const getUserInterestCount = (species) => {
+    return petTypeStats[species?.toLowerCase()] || 0;
   };
 
   if (loading) {
@@ -156,6 +180,25 @@ const AdminManagePets = () => {
             </button>
           </div>
         </div>
+
+        {/* Pet Type Stats Section */}
+        {Object.keys(petTypeStats).length > 0 && (
+          <div className="mb-6 bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-purple-500/30">
+            <h2 className="text-xl font-bold text-white mb-4 flex items-center">
+              <Users className="h-5 w-5 mr-2 text-purple-400" />
+              User Interest by Pet Type
+            </h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {Object.entries(petTypeStats).map(([type, count]) => (
+                <div key={type} className="bg-gray-700/50 rounded-xl p-4 text-center">
+                  <p className="text-3xl font-bold text-purple-400">{count}</p>
+                  <p className="text-sm text-gray-300 capitalize mt-1">{type}</p>
+                  <p className="text-xs text-gray-500 mt-1">interested users</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Success Message */}
         {successMessage && (
@@ -253,6 +296,11 @@ const AdminManagePets = () => {
                       FEATURED
                     </div>
                   )}
+                  {/* User Interest Badge */}
+                  <div className="absolute top-3 right-3 bg-blue-500/90 backdrop-blur-sm text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
+                    <Users className="h-3 w-3" />
+                    {getUserInterestCount(pet.species)} interested
+                  </div>
                 </div>
 
                 {/* Pet Info */}

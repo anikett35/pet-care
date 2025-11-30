@@ -51,11 +51,14 @@ mongoose.connection.on('error', (err) => {
 import petRoutes from './routes/petRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import adoptionRoutes from './routes/adoptionRoutes.js';
+import appointmentRoutes from './routes/appointmentRoutes.js';
 
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/pets', petRoutes);
 app.use('/api/adoption', adoptionRoutes);
+app.use('/api/appointments', appointmentRoutes);
+
 
 // Health check
 app.get('/', (req, res) => {

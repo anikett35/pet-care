@@ -1,150 +1,156 @@
-// src/components/AdminAppointments.jsx
+// src/components/AdminAppointments.jsx - SIMPLIFIED (No Auth Check)
 import { useState, useEffect } from 'react';
-import { Calendar, Clock, Stethoscope, CheckCircle, Trash2, AlertCircle } from 'lucide-react';
+import { Calendar, Clock, Stethoscope, CheckCircle, XCircle, Trash2, AlertCircle, ThumbsUp } from 'lucide-react';
 
 const AdminAppointments = () => {
-  const [pets, setPets] = useState([]);
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [filter, setFilter] = useState('all'); // all, scheduled, completed
+  const [successMessage, setSuccessMessage] = useState('');
+  const [filter, setFilter] = useState('all');
+
+  const API_BASE_URL = 'http://localhost:5000/api';
 
   useEffect(() => {
-    fetchPets();
+    fetchAppointments();
   }, []);
 
-  useEffect(() => {
-    if (pets.length > 0) {
-      extractAppointments();
-    }
-  }, [pets]);
-
-  const fetchPets = async () => {
+  const fetchAppointments = async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch('http://localhost:5000/api/pets');
       
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setError('Please login first');
+        setLoading(false);
+        return;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/appointments`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
       if (!response.ok) {
-        throw new Error('Failed to fetch pets');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch appointments');
       }
       
       const data = await response.json();
-      setPets(data);
+      console.log('Appointments loaded:', data);
+      setAppointments(data);
     } catch (err) {
-      console.error('Error fetching pets:', err);
+      console.error('Error fetching appointments:', err);
       setError(err.message);
-      setPets([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const extractAppointments = () => {
-    const allAppointments = [];
-    pets.forEach(pet => {
-      if (pet && pet.appointments && Array.isArray(pet.appointments)) {
-        pet.appointments.forEach((appt, index) => {
-          if (appt) {
-            allAppointments.push({
-              ...appt,
-              petId: pet._id,
-              appointmentIndex: index,
-              petName: pet.name || 'Unknown',
-              petSpecies: pet.species || 'Unknown'
-            });
-          }
-        });
-      }
-    });
-    
-    allAppointments.sort((a, b) => new Date(a.date) - new Date(b.date));
-    setAppointments(allAppointments);
-  };
-
-  const handleCompleteAppointment = async (petId, appointmentIndex) => {
+  const handleStatusChange = async (appointmentId, newStatus) => {
     try {
-      const pet = pets.find(p => p._id === petId);
-      if (!pet) throw new Error('Pet not found');
+      console.log('Changing status to:', newStatus, 'for appointment:', appointmentId);
+      
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setError('Please login first');
+        return;
+      }
 
-      const updatedAppointments = [...pet.appointments];
-      updatedAppointments[appointmentIndex] = {
-        ...updatedAppointments[appointmentIndex],
-        status: 'Completed'
-      };
-
-      const response = await fetch(`http://localhost:5000/api/pets/${petId}`, {
+      const response = await fetch(`${API_BASE_URL}/appointments/${appointmentId}/status`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ appointments: updatedAppointments })
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ status: newStatus })
       });
 
-      if (!response.ok) throw new Error('Failed to update appointment');
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Status change error:', errorData);
+        throw new Error(errorData.error || 'Failed to update status');
+      }
 
-      await fetchPets();
+      const result = await response.json();
+      console.log('Status change success:', result);
+
+      setSuccessMessage(`Appointment ${newStatus.toLowerCase()} successfully!`);
+      setTimeout(() => setSuccessMessage(''), 3000);
+      
+      // Refresh appointments
+      await fetchAppointments();
     } catch (err) {
-      console.error('Error completing appointment:', err);
+      console.error('Error updating status:', err);
       setError(err.message);
+      setTimeout(() => setError(''), 5000);
     }
   };
 
-  const handleDeleteAppointment = async (petId, appointmentIndex) => {
+  const handleDelete = async (appointmentId) => {
     if (!window.confirm('Are you sure you want to delete this appointment?')) {
       return;
     }
 
     try {
-      const pet = pets.find(p => p._id === petId);
-      if (!pet) throw new Error('Pet not found');
-
-      const updatedAppointments = pet.appointments.filter((_, index) => index !== appointmentIndex);
-
-      const response = await fetch(`http://localhost:5000/api/pets/${petId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ appointments: updatedAppointments })
+      const token = localStorage.getItem('token');
+      
+      const response = await fetch(`${API_BASE_URL}/appointments/${appointmentId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
       });
 
-      if (!response.ok) throw new Error('Failed to delete appointment');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete');
+      }
 
-      await fetchPets();
+      setSuccessMessage('Appointment deleted successfully');
+      setTimeout(() => setSuccessMessage(''), 3000);
+      
+      await fetchAppointments();
     } catch (err) {
       console.error('Error deleting appointment:', err);
       setError(err.message);
+      setTimeout(() => setError(''), 3000);
     }
   };
 
   const getFilteredAppointments = () => {
-    switch (filter) {
-      case 'scheduled':
-        return appointments.filter(appt => appt.status === 'Scheduled');
-      case 'completed':
-        return appointments.filter(appt => appt.status === 'Completed');
-      default:
-        return appointments;
-    }
+    if (filter === 'all') return appointments;
+    return appointments.filter(appt => appt.status.toLowerCase() === filter);
   };
 
   const formatDate = (dateString) => {
     if (!dateString) return 'Date not set';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      weekday: 'short', 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric' 
+    return new Date(dateString).toLocaleDateString('en-US', { 
+      weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' 
     });
   };
 
   const getTypeIcon = (type) => {
     const icons = {
-      Checkup: '🩺',
-      Vaccination: '💉',
-      Grooming: '✂️',
-      Emergency: '🚨',
-      Other: '📋'
+      Checkup: '🩺', Vaccination: '💉', Grooming: '✂️',
+      Emergency: '🚨', Surgery: '🏥', Dental: '🦷', Other: '📋'
     };
     return icons[type] || '📋';
+  };
+
+  const getStatusColor = (status) => {
+    const colors = {
+      Pending: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
+      Confirmed: 'bg-green-500/20 text-green-400 border-green-500/30',
+      Completed: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+      Cancelled: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
+      Rejected: 'bg-red-500/20 text-red-400 border-red-500/30'
+    };
+    return colors[status] || '';
   };
 
   if (loading) {
@@ -158,91 +164,99 @@ const AdminAppointments = () => {
     );
   }
 
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-gray-900 to-pink-900 p-6">
-        <div className="max-w-2xl mx-auto bg-gray-800/50 backdrop-blur-sm rounded-2xl shadow-2xl p-6 text-center border border-purple-500/30">
-          <AlertCircle className="h-16 w-16 text-pink-400 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-white mb-4">Error Loading Data</h2>
-          <p className="text-purple-300 mb-4">{error}</p>
-          <button 
-            onClick={fetchPets}
-            className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-6 py-2 rounded-lg font-semibold"
-          >
-            Retry
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   const filteredAppointments = getFilteredAppointments();
-  const scheduledCount = appointments.filter(a => a.status === 'Scheduled').length;
-  const completedCount = appointments.filter(a => a.status === 'Completed').length;
+  const stats = {
+    total: appointments.length,
+    pending: appointments.filter(a => a.status === 'Pending').length,
+    confirmed: appointments.filter(a => a.status === 'Confirmed').length,
+    completed: appointments.filter(a => a.status === 'Completed').length,
+    rejected: appointments.filter(a => a.status === 'Rejected').length
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-gray-900 to-pink-900">
       
-      {/* Header Section */}
+      {/* Header */}
       <section className="relative overflow-hidden px-6 py-20">
         <div className="absolute inset-0 bg-gradient-to-b from-purple-600/20 to-transparent"></div>
         <div className="max-w-7xl mx-auto relative z-10">
-          <div className="text-center">
-            <h1 className="text-4xl md:text-5xl font-extrabold text-white mb-2">
-              Admin <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">Appointments</span> Manager
-            </h1>
-            <p className="text-xl text-purple-300">Manage all pet appointments from one place</p>
-          </div>
+          <h1 className="text-4xl md:text-5xl font-extrabold text-white mb-2 text-center">
+            Admin <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">Appointments</span> Manager
+          </h1>
+          <p className="text-xl text-purple-300 text-center">Manage all pet appointments from one place</p>
         </div>
       </section>
 
-      {/* Stats & Filter Section */}
+      {/* Messages */}
+      {successMessage && (
+        <div className="max-w-7xl mx-auto px-6 mb-6">
+          <div className="bg-green-500/20 border-2 border-green-500 rounded-xl p-4 flex items-center gap-3">
+            <CheckCircle className="h-6 w-6 text-green-400" />
+            <span className="text-green-300 font-semibold">{successMessage}</span>
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <div className="max-w-7xl mx-auto px-6 mb-6">
+          <div className="bg-red-500/20 border-2 border-red-500 rounded-xl p-4 flex items-center gap-3">
+            <AlertCircle className="h-6 w-6 text-red-400" />
+            <span className="text-red-300 font-semibold">{error}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Stats & Filter */}
       <section className="px-6 pb-12">
         <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-8">
             
-            {/* Stats Cards */}
             <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-purple-500/30">
-              <div className="text-center">
-                <p className="text-4xl font-bold text-white">{appointments.length}</p>
-                <p className="text-purple-300 text-sm mt-2">Total Appointments</p>
-              </div>
+              <p className="text-3xl font-bold text-white text-center">{stats.total}</p>
+              <p className="text-purple-300 text-sm mt-2 text-center">Total</p>
+            </div>
+
+            <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-yellow-500/30">
+              <p className="text-3xl font-bold text-yellow-400 text-center">{stats.pending}</p>
+              <p className="text-yellow-300 text-sm mt-2 text-center">Pending</p>
             </div>
 
             <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-green-500/30">
-              <div className="text-center">
-                <p className="text-4xl font-bold text-green-400">{scheduledCount}</p>
-                <p className="text-green-300 text-sm mt-2">Scheduled</p>
-              </div>
+              <p className="text-3xl font-bold text-green-400 text-center">{stats.confirmed}</p>
+              <p className="text-green-300 text-sm mt-2 text-center">Confirmed</p>
             </div>
 
             <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-blue-500/30">
-              <div className="text-center">
-                <p className="text-4xl font-bold text-blue-400">{completedCount}</p>
-                <p className="text-blue-300 text-sm mt-2">Completed</p>
-              </div>
+              <p className="text-3xl font-bold text-blue-400 text-center">{stats.completed}</p>
+              <p className="text-blue-300 text-sm mt-2 text-center">Completed</p>
             </div>
 
-            {/* Filter Dropdown */}
+            <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-red-500/30">
+              <p className="text-3xl font-bold text-red-400 text-center">{stats.rejected}</p>
+              <p className="text-red-300 text-sm mt-2 text-center">Rejected</p>
+            </div>
+
             <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-4 border border-pink-500/30">
-              <label className="block text-sm font-semibold text-purple-300 mb-2">Filter</label>
+              <label className="block text-xs font-semibold text-purple-300 mb-2">Filter</label>
               <select 
                 value={filter}
                 onChange={(e) => setFilter(e.target.value)}
-                className="w-full p-2 bg-gray-700 border border-purple-500/30 rounded-xl text-white focus:ring-2 focus:ring-purple-500"
+                className="w-full p-2 bg-gray-700 border border-purple-500/30 rounded-xl text-white text-sm"
               >
-                <option value="all">All ({appointments.length})</option>
-                <option value="scheduled">Scheduled ({scheduledCount})</option>
-                <option value="completed">Completed ({completedCount})</option>
+                <option value="all">All</option>
+                <option value="pending">Pending</option>
+                <option value="confirmed">Confirmed</option>
+                <option value="completed">Completed</option>
+                <option value="rejected">Rejected</option>
               </select>
             </div>
           </div>
 
-          {/* Appointments List */}
+          {/* Appointments Grid */}
           {filteredAppointments.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredAppointments.map((appt, idx) => (
-                <div key={idx} className="group relative bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-purple-500/30 hover:border-purple-500 transition-all duration-300">
+              {filteredAppointments.map((appt) => (
+                <div key={appt._id} className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-purple-500/30 hover:border-purple-500 transition-all">
                   
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
@@ -252,11 +266,7 @@ const AdminAppointments = () => {
                         <span className="text-sm text-purple-300">{appt.petSpecies}</span>
                       </div>
                     </div>
-                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                      appt.status === 'Scheduled' 
-                        ? 'bg-green-600 text-white' 
-                        : 'bg-gray-600 text-gray-300'
-                    }`}>
+                    <span className={`px-3 py-1 rounded-full text-xs font-bold border ${getStatusColor(appt.status)}`}>
                       {appt.status}
                     </span>
                   </div>
@@ -274,35 +284,51 @@ const AdminAppointments = () => {
                       <Stethoscope className="h-4 w-4 mr-2 text-purple-400" />
                       <span className="text-sm">{appt.type}</span>
                     </div>
-                    {appt.veterinarian && (
-                      <p className="text-sm text-gray-300 mt-3">
-                        <strong className="text-purple-300">Vet:</strong> {appt.veterinarian}
-                      </p>
-                    )}
+                    <p className="text-sm text-gray-300 mt-2">
+                      <strong>User:</strong> {appt.userName} ({appt.userEmail})
+                    </p>
                     {appt.notes && (
-                      <p className="text-sm text-gray-400 bg-gray-700/50 p-3 rounded-lg mt-3">
-                        {appt.notes}
-                      </p>
+                      <p className="text-sm text-gray-400 bg-gray-700/50 p-3 rounded-lg mt-3">{appt.notes}</p>
                     )}
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="flex gap-2 mt-4 pt-4 border-t border-gray-700">
-                    {appt.status === 'Scheduled' && (
+                  <div className="space-y-2 pt-4 border-t border-gray-700">
+                    {appt.status === 'Pending' && (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleStatusChange(appt._id, 'Confirmed')}
+                          className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 px-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-1"
+                        >
+                          <ThumbsUp className="h-4 w-4" />
+                          Accept
+                        </button>
+                        <button
+                          onClick={() => handleStatusChange(appt._id, 'Rejected')}
+                          className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 px-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-1"
+                        >
+                          <XCircle className="h-4 w-4" />
+                          Reject
+                        </button>
+                      </div>
+                    )}
+                    
+                    {appt.status === 'Confirmed' && (
                       <button
-                        onClick={() => handleCompleteAppointment(appt.petId, appt.appointmentIndex)}
-                        className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-xl font-semibold transition flex items-center justify-center gap-2"
+                        onClick={() => handleStatusChange(appt._id, 'Completed')}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2"
                       >
                         <CheckCircle className="h-4 w-4" />
-                        <span>Complete</span>
+                        Mark Complete
                       </button>
                     )}
+                    
                     <button
-                      onClick={() => handleDeleteAppointment(appt.petId, appt.appointmentIndex)}
-                      className={`${appt.status === 'Scheduled' ? 'flex-1' : 'w-full'} bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-xl font-semibold transition flex items-center justify-center gap-2`}
+                      onClick={() => handleDelete(appt._id)}
+                      className="w-full bg-gray-600 hover:bg-gray-700 text-white py-2 px-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2"
                     >
                       <Trash2 className="h-4 w-4" />
-                      <span>Delete</span>
+                      Delete
                     </button>
                   </div>
                 </div>
@@ -312,11 +338,7 @@ const AdminAppointments = () => {
             <div className="text-center py-20 bg-gray-800/50 backdrop-blur-sm rounded-3xl border border-purple-500/30">
               <Calendar className="h-16 w-16 text-purple-400 mx-auto mb-4" />
               <h3 className="text-2xl font-bold text-white mb-2">No Appointments Found</h3>
-              <p className="text-purple-300">
-                {filter === 'all' 
-                  ? 'No appointments have been scheduled yet.' 
-                  : `No ${filter} appointments found.`}
-              </p>
+              <p className="text-purple-300">No {filter !== 'all' ? filter : ''} appointments to display</p>
             </div>
           )}
         </div>

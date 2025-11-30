@@ -1,4 +1,4 @@
-// src/App.jsx - Complete Fixed Version with Admin Manage Pets
+// src/App.jsx - Complete Version with Admin Navigation & User Management
 import { useState, useEffect, createContext, useContext } from "react";
 import {
   BrowserRouter as Router,
@@ -28,6 +28,7 @@ import AdoptionApplication from "./components/AdoptionApplication.jsx";
 import AdoptionSuccess from "./components/AdoptionSuccess.jsx";
 import AdminAddPet from "./components/AdminAddPet.jsx";
 import AdminManagePets from "./components/AdminManagePets.jsx";
+import AdminUserManagement from "./components/AdminUserManagement.jsx";
 
 // Import Lucide React Icons
 import {
@@ -49,6 +50,7 @@ import {
   Heart,
   Plus,
   List,
+  Users,
 } from "lucide-react";
 
 // --- Auth Context ---
@@ -227,25 +229,31 @@ function Navigation() {
   const { user, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
 
-  const baseNavigation = [
-    { path: "/", name: "Dashboard", icon: Home },
-    { path: "/pets", name: "Pets", icon: PawPrint },
-    { path: "/appointments", name: "Appointments", icon: CalendarDays },
-    { path: "/grooming", name: "Grooming", icon: Scissors },
-    { path: "/health-timeline", name: "Health Timeline", icon: Activity },
-    { path: "/adoption", name: "Adoption", icon: Heart },
-  ];
+  // Define navigation based on user role
+  const getNavigation = () => {
+    if (user?.role === "admin") {
+      // Admin sees only: Dashboard, User Management, and Pet Management
+      return [
+        { path: "/", name: "Dashboard", icon: Home },
+        { path: "/admin/users", name: "User Management", icon: Users },
+        { path: "/admin/manage-pets", name: "Manage Pets", icon: List },
+        { path: "/admin/add-pet", name: "Add Pet", icon: Plus },
+        { path: "/admin/appointments", name: "Appointments", icon: Shield },
+      ];
+    } else {
+      // Regular users see all features
+      return [
+        { path: "/", name: "Dashboard", icon: Home },
+        { path: "/pets", name: "Pets", icon: PawPrint },
+        { path: "/appointments", name: "Appointments", icon: CalendarDays },
+        { path: "/grooming", name: "Grooming", icon: Scissors },
+        { path: "/health-timeline", name: "Health Timeline", icon: Activity },
+        { path: "/adoption", name: "Adoption", icon: Heart },
+      ];
+    }
+  };
 
-  const adminNavigation = [
-    { path: "/admin/manage-pets", name: "Manage Pets", icon: List },
-    { path: "/admin/add-pet", name: "Add Pet", icon: Plus },
-    { path: "/admin/appointments", name: "Admin Appointments", icon: Shield },
-  ];
-
-  // Combine base navigation with admin navigation if user is admin
-  const navigation = user?.role === "admin" 
-    ? [...baseNavigation, ...adminNavigation]
-    : baseNavigation;
+  const navigation = getNavigation();
 
   const isActive = (path) => location.pathname === path;
 
@@ -302,7 +310,7 @@ function Navigation() {
             </button>
           </div>
 
-          {/* Desktop Navigation - Fixed: removed overflow-x-auto */}
+          {/* Desktop Navigation */}
           <div className="hidden sm:flex sm:space-x-1 lg:space-x-2 items-center">
             {navigation.map((item) => (
               <NavButton key={item.path} item={item} />
@@ -634,6 +642,15 @@ function AppContent() {
             <AdminRoute>
               <Navigation />
               <AdminManagePets />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/users"
+          element={
+            <AdminRoute>
+              <Navigation />
+              <AdminUserManagement />
             </AdminRoute>
           }
         />
