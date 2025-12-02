@@ -37,7 +37,7 @@ const seedAdmin = async () => {
     console.log('📧 Email: admin@petcare.com');
     console.log('🔑 Password: admin123');
     console.log('👤 Username: admin');
-    console.log('🛡️  Role: admin');
+    console.log('🛡️  Role: admin123');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
     process.exit(0);

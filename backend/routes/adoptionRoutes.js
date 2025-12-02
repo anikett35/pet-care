@@ -56,56 +56,121 @@ router.get('/available-pets', async (req, res) => {
 });
 
 // @route   POST /api/adoption/applications
-// @desc    Submit adoption application
+// @desc    Submit adoption application (UPDATED FOR SHORTENED FORM)
 // @access  Public (requires auth in production)
 router.post('/applications', async (req, res) => {
   try {
-    const { petId, applicantInfo } = req.body;
+    console.log('Received application data:', req.body);
+    
+    const { 
+      petId,
+      fullName,
+      email,
+      phone,
+      address,
+      housingType,
+      ownOrRent,
+      householdMembers,
+      petExperience,
+      hoursAlone,
+      agreement
+    } = req.body;
 
-    // Validation
-    if (!petId || !applicantInfo) {
-      return res.status(400).json({ 
-        error: 'Pet ID and applicant information are required' 
-      });
+    // Detailed validation with specific error messages
+    if (!petId) {
+      return res.status(400).json({ error: 'Pet ID is required' });
+    }
+    if (!fullName) {
+      return res.status(400).json({ error: 'Full name is required' });
+    }
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+    if (!phone) {
+      return res.status(400).json({ error: 'Phone is required' });
+    }
+    if (!address) {
+      return res.status(400).json({ error: 'Address is required' });
+    }
+    if (!housingType) {
+      return res.status(400).json({ error: 'Housing type is required' });
+    }
+    if (!ownOrRent) {
+      return res.status(400).json({ error: 'Own/Rent status is required' });
+    }
+    if (!householdMembers) {
+      return res.status(400).json({ error: 'Household members information is required' });
+    }
+    if (!petExperience) {
+      return res.status(400).json({ error: 'Pet experience is required' });
+    }
+    if (!hoursAlone) {
+      return res.status(400).json({ error: 'Hours alone information is required' });
+    }
+    if (!agreement) {
+      return res.status(400).json({ error: 'You must accept the adoption agreement' });
     }
 
     // Check if pet exists and is available
     const pet = await Pet.findById(petId);
+    console.log('Found pet:', pet);
+    
     if (!pet) {
       return res.status(404).json({ error: 'Pet not found' });
     }
 
-    if (!pet.availableForAdoption) {
+    // Check availability (handle both field names for compatibility)
+    const isAvailable = pet.availableForAdoption || 
+                       pet.adoptionStatus === 'available' || 
+                       !pet.adoptionStatus;
+    
+    if (!isAvailable && pet.adoptionStatus === 'adopted') {
       return res.status(400).json({ 
         error: 'This pet is no longer available for adoption' 
       });
     }
+
+    console.log('Creating application...');
 
     // Create adoption application
     const application = new Adoption({
       petId,
       petName: pet.name,
       petSpecies: pet.species,
-      applicantName: applicantInfo.fullName,
-      applicantEmail: applicantInfo.email,
-      applicantPhone: applicantInfo.phone,
-      applicantAddress: applicantInfo.address,
-      applicantInfo,
-      status: 'pending'
+      fullName,
+      email,
+      phone,
+      address,
+      housingType,
+      ownOrRent,
+      householdMembers,
+      petExperience,
+      hoursAlone,
+      agreement,
+      status: 'pending',
+      submittedAt: new Date()
     });
 
     await application.save();
+    console.log('Application saved:', application);
 
     res.status(201).json({
       message: 'Adoption application submitted successfully',
-      application
+      application: {
+        _id: application._id,
+        applicationId: application.applicationId,
+        petName: application.petName,
+        status: application.status,
+        submittedAt: application.submittedAt
+      }
     });
 
   } catch (error) {
     console.error('Error submitting adoption application:', error);
     res.status(500).json({ 
       error: 'Failed to submit application',
-      message: error.message 
+      message: error.message,
+      details: error.stack
     });
   }
 });
@@ -115,8 +180,15 @@ router.post('/applications', async (req, res) => {
 // @access  Private/Admin
 router.get('/applications', async (req, res) => {
   try {
-    const applications = await Adoption.find()
-      .sort({ createdAt: -1 });
+    const { status, petId } = req.query;
+    
+    let query = {};
+    if (status) query.status = status;
+    if (petId) query.petId = petId;
+
+    const applications = await Adoption.find(query)
+      .populate('petId', 'name breed species age image')
+      .sort({ submittedAt: -1 });
     
     res.json(applications);
   } catch (error) {
@@ -128,24 +200,55 @@ router.get('/applications', async (req, res) => {
   }
 });
 
+// @route   GET /api/adoption/applications/:id
+// @desc    Get single adoption application by ID
+// @access  Private/Admin
+router.get('/applications/:id', async (req, res) => {
+  try {
+    const application = await Adoption.findById(req.params.id)
+      .populate('petId');
+
+    if (!application) {
+      return res.status(404).json({ error: 'Application not found' });
+    }
+
+    res.json(application);
+  } catch (error) {
+    console.error('Error fetching application:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch application',
+      message: error.message 
+    });
+  }
+});
+
 // @route   PUT /api/adoption/applications/:id
 // @desc    Update adoption application status (Admin only)
 // @access  Private/Admin
 router.put('/applications/:id', async (req, res) => {
   try {
-    const { status } = req.body;
+    const { status, reviewNotes } = req.body;
     
-    if (!['pending', 'approved', 'rejected'].includes(status)) {
+    if (!['pending', 'under_review', 'approved', 'rejected', 'completed'].includes(status)) {
       return res.status(400).json({ 
-        error: 'Invalid status. Must be pending, approved, or rejected' 
+        error: 'Invalid status. Must be pending, under_review, approved, rejected, or completed' 
       });
+    }
+
+    const updateData = { 
+      status,
+      reviewedAt: new Date()
+    };
+
+    if (reviewNotes) {
+      updateData.reviewNotes = reviewNotes;
     }
 
     const application = await Adoption.findByIdAndUpdate(
       req.params.id,
-      { status },
+      updateData,
       { new: true }
-    );
+    ).populate('petId');
 
     if (!application) {
       return res.status(404).json({ error: 'Application not found' });
