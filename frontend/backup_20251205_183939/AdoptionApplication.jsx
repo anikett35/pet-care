@@ -1,4 +1,3 @@
-import { API_URL } from '../config';
 // src/components/AdoptionApplication.jsx
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -84,7 +83,7 @@ const AdoptionApplication = () => {
     { id: 'agreement', title: 'Agreement', icon: FileText }
   ];
 
-  const API_BASE_URL = `${API_URL}`/api';
+  const API_BASE_URL = 'http://localhost:5000/api';
 
   useEffect(() => {
     fetchPet();

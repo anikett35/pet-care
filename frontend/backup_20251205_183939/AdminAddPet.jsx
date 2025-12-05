@@ -1,4 +1,3 @@
-import { API_URL } from '../config';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PawPrint, Upload, X, Check, AlertCircle, Heart, Eye } from 'lucide-react';
@@ -39,7 +38,7 @@ const AdminAddPet = () => {
   const [error, setError] = useState('');
   const [addedPetId, setAddedPetId] = useState(null);
 
-  const API_BASE_URL = `${API_URL}`/api';
+  const API_BASE_URL = 'http://localhost:5000/api';
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;

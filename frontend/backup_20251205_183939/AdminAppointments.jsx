@@ -1,4 +1,3 @@
-import { API_URL } from '../config';
 // src/components/AdminAppointments.jsx - SIMPLIFIED (No Auth Check)
 import { useState, useEffect } from 'react';
 import { Calendar, Clock, Stethoscope, CheckCircle, XCircle, Trash2, AlertCircle, ThumbsUp } from 'lucide-react';
@@ -10,7 +9,7 @@ const AdminAppointments = () => {
   const [successMessage, setSuccessMessage] = useState('');
   const [filter, setFilter] = useState('all');
 
-  const API_BASE_URL = `${API_URL}`/api';
+  const API_BASE_URL = 'http://localhost:5000/api';
 
   useEffect(() => {
     fetchAppointments();

@@ -1,4 +1,3 @@
-import { API_URL } from '../config';
 // src/components/PetDetail.jsx
 import { useState, useEffect, useCallback } from 'react';
 
@@ -141,7 +140,7 @@ const PetDetail = ({ petId, onClose }) => {
     try {
       // Simulate API call delay for better UX demonstration
       // await new Promise(resolve => setTimeout(resolve, 500)); 
-      const response = await fetch(`${API_URL}/api/pets/${petId}`);
+      const response = await fetch(`http://localhost:5000/api/pets/${petId}`);
       if (!response.ok) throw new Error('Pet not found or server error');
       
       const data = await response.json();
@@ -170,7 +169,7 @@ const PetDetail = ({ petId, onClose }) => {
     });
 
     try {
-      const response = await fetch(`${API_URL}/api/pets/${petId}/${endpoint}`, {
+      const response = await fetch(`http://localhost:5000/api/pets/${petId}/${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)

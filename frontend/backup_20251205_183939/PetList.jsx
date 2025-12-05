@@ -1,4 +1,3 @@
-import { API_URL } from '../config';
 // src/components/PetList.jsx - FIXED to use MongoDB
 import React, { useState, useEffect } from 'react';
 import { Plus, Camera, Edit, Trash2, Upload, AlertCircle, CheckCircle } from 'lucide-react';
@@ -23,7 +22,7 @@ const PetList = () => {
     imagePreview: ''
   });
 
-  const API_BASE_URL = `${API_URL}`/api';
+  const API_BASE_URL = 'http://localhost:5000/api';
 
   useEffect(() => {
     fetchPets();

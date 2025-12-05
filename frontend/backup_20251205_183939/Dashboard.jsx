@@ -1,4 +1,3 @@
-import { API_URL } from '../config';
 // src/components/Dashboard.jsx
 import { useState, useEffect } from 'react';
 
@@ -23,7 +22,7 @@ const Dashboard = () => {
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
 
-  const API_BASE_URL = `${API_URL}`/api';
+  const API_BASE_URL = 'http://localhost:5000/api';
 
   useEffect(() => {
     fetchDashboardData();

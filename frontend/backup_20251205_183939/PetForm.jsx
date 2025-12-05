@@ -1,4 +1,3 @@
-import { API_URL } from '../config';
 import { useState } from 'react';
 import { PawPrint, Upload, X, CheckCircle, AlertCircle } from 'lucide-react';
 
@@ -50,7 +49,7 @@ const PetForm = ({ onClose, onSuccess }) => {
     setSuccess('');
 
     try {
-      const response = await fetch(`${API_URL}`/api/pets', {
+      const response = await fetch('http://localhost:5000/api/pets', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
