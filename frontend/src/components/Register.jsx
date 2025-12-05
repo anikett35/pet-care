@@ -1,7 +1,8 @@
-// src/components/Register.jsx
+// src/components/Register.jsx - Updated with API_URL
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { User, Mail, Lock, UserPlus, AlertCircle, PawPrint, CheckCircle } from 'lucide-react';
+import { User, Mail, Lock, UserPlus, AlertCircle, PawPrint } from 'lucide-react';
+import { API_URL } from '../config';
 
 const Register = ({ onRegisterSuccess }) => {
   const [formData, setFormData] = useState({
@@ -64,7 +65,7 @@ const Register = ({ onRegisterSuccess }) => {
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/register', {
+      const response = await fetch(`${API_URL}/api/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -83,16 +84,13 @@ const Register = ({ onRegisterSuccess }) => {
         throw new Error(data.error || 'Registration failed');
       }
 
-      // Store token and user data
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
 
-      // Call success callback
       if (onRegisterSuccess) {
         onRegisterSuccess(data.user);
       }
 
-      // Redirect to dashboard
       navigate('/');
 
     } catch (err) {
@@ -105,7 +103,6 @@ const Register = ({ onRegisterSuccess }) => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-blue-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* Logo and Title */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-full mb-4">
             <PawPrint className="h-8 w-8 text-white" />
@@ -114,7 +111,6 @@ const Register = ({ onRegisterSuccess }) => {
           <p className="text-gray-400">Join PetCare Pro today</p>
         </div>
 
-        {/* Register Form */}
         <div className="bg-gray-800 rounded-2xl shadow-2xl p-8 border border-gray-700">
           {error && (
             <div className="mb-6 p-4 bg-red-900/50 border border-red-700 rounded-lg flex items-start">
@@ -124,7 +120,6 @@ const Register = ({ onRegisterSuccess }) => {
           )}
 
           <div className="space-y-5">
-            {/* Username Field */}
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
                 Username *
@@ -145,7 +140,6 @@ const Register = ({ onRegisterSuccess }) => {
               </div>
             </div>
 
-            {/* Full Name Field */}
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
                 Full Name
@@ -165,7 +159,6 @@ const Register = ({ onRegisterSuccess }) => {
               </div>
             </div>
 
-            {/* Email Field */}
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
                 Email Address *
@@ -186,7 +179,6 @@ const Register = ({ onRegisterSuccess }) => {
               </div>
             </div>
 
-            {/* Password Field */}
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
                 Password *
@@ -208,7 +200,6 @@ const Register = ({ onRegisterSuccess }) => {
               <p className="mt-1 text-xs text-gray-400">Must be at least 6 characters</p>
             </div>
 
-            {/* Confirm Password Field */}
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
                 Confirm Password *
@@ -229,7 +220,6 @@ const Register = ({ onRegisterSuccess }) => {
               </div>
             </div>
 
-            {/* Terms Checkbox */}
             <div className="flex items-start">
               <input
                 type="checkbox"
@@ -244,7 +234,6 @@ const Register = ({ onRegisterSuccess }) => {
               </label>
             </div>
 
-            {/* Register Button */}
             <button
               onClick={handleSubmit}
               disabled={loading}
@@ -264,7 +253,6 @@ const Register = ({ onRegisterSuccess }) => {
             </button>
           </div>
 
-          {/* Login Link */}
           <div className="mt-6 text-center">
             <p className="text-gray-400 text-sm">
               Already have an account?{' '}

@@ -1,7 +1,8 @@
-// src/components/Login.jsx - Complete Fixed Version
+// src/components/Login.jsx - Updated with API_URL
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Lock, Mail, LogIn, AlertCircle, PawPrint } from 'lucide-react';
+import { API_URL } from '../config';
 
 const Login = ({ onLoginSuccess }) => {
   const [formData, setFormData] = useState({
@@ -17,7 +18,7 @@ const Login = ({ onLoginSuccess }) => {
       ...formData,
       [e.target.name]: e.target.value
     });
-    setError(''); // Clear error when user types
+    setError('');
   };
 
   const handleSubmit = async (e) => {
@@ -26,7 +27,7 @@ const Login = ({ onLoginSuccess }) => {
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/login', {
+      const response = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -40,12 +41,10 @@ const Login = ({ onLoginSuccess }) => {
         throw new Error(data.error || 'Login failed');
       }
 
-      // Call success callback with FULL data object (includes token and user)
       if (onLoginSuccess) {
-        onLoginSuccess(data); // Pass entire data object
+        onLoginSuccess(data);
       }
 
-      // Redirect to dashboard
       navigate('/');
 
     } catch (err) {
@@ -58,7 +57,6 @@ const Login = ({ onLoginSuccess }) => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-blue-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* Logo and Title */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-full mb-4">
             <PawPrint className="h-8 w-8 text-white" />
@@ -67,7 +65,6 @@ const Login = ({ onLoginSuccess }) => {
           <p className="text-gray-400">Sign in to PetCare Pro</p>
         </div>
 
-        {/* Login Form */}
         <div className="bg-gray-800 rounded-2xl shadow-2xl p-8 border border-gray-700">
           {error && (
             <div className="mb-6 p-4 bg-red-900/50 border border-red-700 rounded-lg flex items-start">
@@ -77,7 +74,6 @@ const Login = ({ onLoginSuccess }) => {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Email Field */}
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
                 Email Address
@@ -98,7 +94,6 @@ const Login = ({ onLoginSuccess }) => {
               </div>
             </div>
 
-            {/* Password Field */}
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
                 Password
@@ -119,7 +114,6 @@ const Login = ({ onLoginSuccess }) => {
               </div>
             </div>
 
-            {/* Remember Me & Forgot Password */}
             <div className="flex items-center justify-between">
               <label className="flex items-center">
                 <input
@@ -133,7 +127,6 @@ const Login = ({ onLoginSuccess }) => {
               </a>
             </div>
 
-            {/* Login Button */}
             <button
               type="submit"
               disabled={loading}
@@ -153,7 +146,6 @@ const Login = ({ onLoginSuccess }) => {
             </button>
           </form>
 
-          {/* Sign Up Link */}
           <div className="mt-6 text-center">
             <p className="text-gray-400 text-sm">
               Don't have an account?{' '}
@@ -164,7 +156,6 @@ const Login = ({ onLoginSuccess }) => {
           </div>
         </div>
 
-        {/* Demo Credentials */}
         <div className="mt-6 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
           <p className="text-gray-400 text-xs text-center mb-2">Demo Credentials:</p>
           <p className="text-gray-300 text-xs text-center">Email: demo@petcare.com</p>
