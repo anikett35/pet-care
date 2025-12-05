@@ -1,6 +1,7 @@
 {
   "name": "petcare-frontend",
   "version": "1.0.0",
+  "type": "module",
   "private": true,
   "scripts": {
     "dev": "vite",
@@ -13,6 +14,9 @@
     "react-router-dom": "^6.22.1"
   },
   "devDependencies": {
+    "tailwindcss": "^3.4.0",
+    "postcss": "^8.4.38",
+    "autoprefixer": "^10.4.17",
     "vite": "^5.0.0"
   }
 }
