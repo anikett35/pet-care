@@ -1,19 +1,27 @@
-// backend/server.js
+// backend/server.js - Updated with CORS for Vercel
 import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
 
-// Load environment variables
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware - INCREASED PAYLOAD LIMIT FOR IMAGES
-app.use(cors());
-app.use(express.json({ limit: '50mb' })); // Increased from default
-app.use(express.urlencoded({ limit: '50mb', extended: true })); // Increased from default
+// CORS Configuration - UPDATED FOR VERCEL
+app.use(cors({
+  origin: [
+    'http://localhost:5173',
+    'https://pet-care-roan-three.vercel.app'
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // MongoDB Connection
 const connectDB = async () => {
@@ -35,10 +43,8 @@ const connectDB = async () => {
   }
 };
 
-// Connect to database
 connectDB();
 
-// MongoDB connection event handlers
 mongoose.connection.on('connected', () => {
   console.log('✅ Mongoose connected to MongoDB');
 });
@@ -59,7 +65,6 @@ app.use('/api/pets', petRoutes);
 app.use('/api/adoption', adoptionRoutes);
 app.use('/api/appointments', appointmentRoutes);
 
-
 // Health check
 app.get('/', (req, res) => {
   res.json({ 
@@ -69,7 +74,7 @@ app.get('/', (req, res) => {
   });
 });
 
-// Enable adoption for all pets (one-time fix)
+// Enable adoption for all pets
 app.put('/api/pets/enable-adoption', async (req, res) => {
   try {
     const Pet = (await import('./models/Pet.js')).default;
@@ -87,7 +92,7 @@ app.put('/api/pets/enable-adoption', async (req, res) => {
   }
 });
 
-// Updated seed route with adoption pets
+// Seed route
 app.get('/api/seed', async (req, res) => {
   try {
     const Pet = (await import('./models/Pet.js')).default;
@@ -95,12 +100,10 @@ app.get('/api/seed', async (req, res) => {
     
     console.log('🌱 Seeding sample data...');
     
-    // Clear existing data
     await Pet.deleteMany({});
     await Adoption.deleteMany({});
     console.log('✅ Cleared existing data');
     
-    // Add sample adoption pets
     const samplePets = [
       {
         name: "Max",
@@ -110,7 +113,7 @@ app.get('/api/seed', async (req, res) => {
         gender: "Male",
         size: "Large",
         location: "New York, NY",
-        description: "Friendly and energetic golden retriever looking for an active family. Great with kids and other pets. Loves playing fetch and going for long walks.",
+        description: "Friendly and energetic golden retriever looking for an active family. Great with kids and other pets.",
         image: "https://images.unsplash.com/photo-1552053831-71594a27632d?w=400&h=300&fit=crop",
         availableForAdoption: true,
         adoptionFee: 250,
@@ -130,7 +133,7 @@ app.get('/api/seed', async (req, res) => {
         gender: "Female",
         size: "Small",
         location: "Brooklyn, NY",
-        description: "Sweet and affectionate cat who loves cuddles and quiet evenings. Perfect for apartment living. Enjoys watching birds from the window.",
+        description: "Sweet and affectionate cat who loves cuddles. Perfect for apartment living.",
         image: "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=400&h=300&fit=crop",
         availableForAdoption: true,
         adoptionFee: 150,
@@ -139,46 +142,6 @@ app.get('/api/seed', async (req, res) => {
         goodWith: ["Kids", "Cats"],
         specialNeeds: "None",
         energyLevel: "Medium",
-        trainingLevel: "Litter Trained",
-        featured: false
-      },
-      {
-        name: "Buddy",
-        species: "Dog",
-        breed: "Beagle Mix",
-        age: "4 years",
-        gender: "Male",
-        size: "Medium",
-        location: "Queens, NY",
-        description: "Gentle and calm beagle with lots of love to give. Great companion for seniors or quiet households. Enjoys leisurely walks and naps.",
-        image: "https://images.unsplash.com/photo-1517849845537-4d257902454a?w=400&h=300&fit=crop",
-        availableForAdoption: true,
-        adoptionFee: 200,
-        vaccinated: true,
-        neutered: true,
-        goodWith: ["Kids", "Dogs"],
-        specialNeeds: "Mild arthritis - requires joint supplements",
-        energyLevel: "Low",
-        trainingLevel: "Advanced",
-        featured: true
-      },
-      {
-        name: "Bella",
-        species: "Cat",
-        breed: "Siamese",
-        age: "6 months",
-        gender: "Female",
-        size: "Small",
-        location: "Manhattan, NY",
-        description: "Playful and curious siamese kitten. Very intelligent and loves interactive toys. Would do best in a home with another young cat.",
-        image: "https://images.unsplash.com/photo-1533738363-b7f9aef128ce?w=400&h=300&fit=crop",
-        availableForAdoption: true,
-        adoptionFee: 175,
-        vaccinated: true,
-        neutered: false,
-        goodWith: ["Kids", "Cats", "Dogs"],
-        specialNeeds: "None",
-        energyLevel: "High",
         trainingLevel: "Litter Trained",
         featured: false
       }
@@ -219,13 +182,11 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Start server only when DB is connected
+// Start server
 mongoose.connection.once('open', () => {
   app.listen(PORT, () => {
     console.log(`🚀 Server running on http://localhost:${PORT}`);
-    console.log(`📊 MongoDB: Connected to database`);
-    console.log(`🔐 Auth routes: /api/auth/login, /api/auth/register`);
-    console.log(`🐾 Adoption routes: /api/adoption/applications, /api/adoption/available-pets`);
-    console.log(`📸 Image upload limit: 50MB`);
+    console.log(`📊 MongoDB: Connected`);
+    console.log(`🌐 CORS enabled for: localhost:5173 & Vercel`);
   });
 });
