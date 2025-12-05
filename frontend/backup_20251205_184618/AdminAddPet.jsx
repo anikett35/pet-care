@@ -39,7 +39,7 @@ const AdminAddPet = () => {
   const [error, setError] = useState('');
   const [addedPetId, setAddedPetId] = useState(null);
 
-  const API_BASE_URL = `${API_URL}/api`;
+  const API_BASE_URL = `${API_URL}`/api';
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;

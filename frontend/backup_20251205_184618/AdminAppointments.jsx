@@ -10,7 +10,7 @@ const AdminAppointments = () => {
   const [successMessage, setSuccessMessage] = useState('');
   const [filter, setFilter] = useState('all');
 
-  const API_BASE_URL = `${API_URL}/api`;
+  const API_BASE_URL = `${API_URL}`/api';
 
   useEffect(() => {
     fetchAppointments();

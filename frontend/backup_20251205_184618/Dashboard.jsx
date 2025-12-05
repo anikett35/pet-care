@@ -23,7 +23,7 @@ const Dashboard = () => {
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
 
-  const API_BASE_URL = `${API_URL}/api`;
+  const API_BASE_URL = `${API_URL}`/api';
 
   useEffect(() => {
     fetchDashboardData();

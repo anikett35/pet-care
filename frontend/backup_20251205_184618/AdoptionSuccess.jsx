@@ -1,4 +1,3 @@
-import { API_URL } from '../config';
 // src/components/AdoptionSuccess.jsx
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';

@@ -1,4 +1,3 @@
-import { API_URL } from '../config';
 // src/components/PetHealthTimeline.jsx
 import React, { useState, useEffect } from 'react';
 import { 

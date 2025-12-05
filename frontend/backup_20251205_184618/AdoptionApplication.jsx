@@ -84,7 +84,7 @@ const AdoptionApplication = () => {
     { id: 'agreement', title: 'Agreement', icon: FileText }
   ];
 
-  const API_BASE_URL = `${API_URL}/api`;
+  const API_BASE_URL = `${API_URL}`/api';
 
   useEffect(() => {
     fetchPet();

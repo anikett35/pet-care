@@ -19,7 +19,7 @@ const Appointments = () => {
     notes: ''
   });
 
-  const API_BASE_URL = `${API_URL}/api`;
+  const API_BASE_URL = `${API_URL}`/api';
 
   useEffect(() => {
     fetchPets();

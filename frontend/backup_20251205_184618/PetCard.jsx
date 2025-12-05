@@ -1,4 +1,3 @@
-import { API_URL } from '../config';
 // src/components/PetCard.jsx
 import { Link } from 'react-router-dom';
 

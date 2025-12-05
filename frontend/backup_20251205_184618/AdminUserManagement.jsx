@@ -30,7 +30,7 @@ const AdminUserManagement = () => {
   const [successMessage, setSuccessMessage] = useState('');
   const [error, setError] = useState('');
 
-  const API_BASE_URL = `${API_URL}/api`;
+  const API_BASE_URL = `${API_URL}`/api';
 
   useEffect(() => {
     fetchUsers();
